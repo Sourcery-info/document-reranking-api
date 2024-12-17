@@ -1,5 +1,9 @@
 FROM python:3.9-slim
 
+LABEL maintainer="jason@10layer.com"
+LABEL version="1.0.0"
+LABEL description="Document Reranking API"
+
 WORKDIR /app
 
 # Install system dependencies
