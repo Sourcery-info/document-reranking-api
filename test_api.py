@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from api import app, API_INSTRUCTIONS
 from reranker import rank_documents
+from unittest.mock import patch
 
 client = TestClient(app)
 
@@ -111,3 +112,18 @@ def test_rank_endpoint_relevance():
     )
     
     assert all(panda_rank < python_doc_rank for panda_rank in panda_docs_ranks) 
+
+def test_unload_endpoint():
+    """Test the model unload endpoint"""
+    with patch('api.unload_reranker') as mock_unload:
+        response = client.get("/unload")
+        
+        # Check response
+        assert response.status_code == 200
+        assert response.json() == {
+            "status": "success",
+            "message": "Model unloaded from memory"
+        }
+        
+        # Verify unload_reranker was called
+        mock_unload.assert_called_once()
