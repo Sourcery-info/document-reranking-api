@@ -5,7 +5,7 @@ from typing import List, Dict
 import uvicorn
 import argparse
 import os
-from reranker import get_reranker, rank_documents
+from reranker import get_reranker, rank_documents, unload_reranker
 
 app = FastAPI(title="Document Reranking API")
 
@@ -38,6 +38,10 @@ API_INSTRUCTIONS: Dict = {
                 ],
                 "top_k": 2
             }
+        },
+        "/unload": {
+            "method": "GET",
+            "description": "Unloads the reranker model from GPU memory"
         }
     }
 }
@@ -84,6 +88,12 @@ async def rank_documents_endpoint(request: RankingRequest):
         ranked_documents=ranked_docs_dicts,
         execution_time=execution_time
     )
+
+@app.get("/unload")
+async def unload_model():
+    """Unload the model from GPU memory"""
+    unload_reranker()
+    return {"status": "success", "message": "Model unloaded from memory"}
 
 def get_args():
     parser = argparse.ArgumentParser(description='Document Reranking API Server')
