@@ -22,6 +22,16 @@ def get_reranker():
         )
     return global_reranker
 
+def unload_reranker():
+    """Unload the reranker model and clear GPU memory"""
+    global global_reranker
+    if global_reranker is not None:
+        del global_reranker
+        global_reranker = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
+
 def rank_documents(
     question: str,
     documents: List[str],
