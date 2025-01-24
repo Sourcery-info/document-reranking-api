@@ -14,6 +14,17 @@ The version is exposed in:
 - Root endpoint `/` in the response
 - FastAPI title
 
+## Setup
+
+### Conda
+
+You can install the dependencies using conda:
+
+```bash
+conda env create -f environment.yml
+conda activate document-reranking-api
+```
+
 ## Usage
 
 To run the API, use the following command:
