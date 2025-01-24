@@ -4,6 +4,7 @@ from typing import List, Tuple
 from pydantic import BaseModel
 import torch
 import gc
+import os
 
 # Create a global reranker instance that can be reused
 global_reranker = None
@@ -15,10 +16,27 @@ class RankedDocument(BaseModel):
 def get_reranker():
     global global_reranker
     if global_reranker is None:
+        # Get selected CUDA device
+        device = None
+        if torch.cuda.is_available():
+            cuda_device = os.environ.get('CUDA_DEVICE')
+            if cuda_device is not None:
+                try:
+                    device_id = int(cuda_device)
+                    if device_id >= 0 and device_id < torch.cuda.device_count():
+                        device = f'cuda:{device_id}'
+                except ValueError:
+                    pass
+            if device is None:
+                device = 'cuda:0'  # default to first GPU
+        else:
+            device = 'cpu'
+
         global_reranker = FlagLLMReranker(
             'BAAI/bge-reranker-v2-gemma',
             use_fp16=True,
-            cache_dir='./model_cache'
+            cache_dir='./model_cache',
+            device=device
         )
     return global_reranker
 

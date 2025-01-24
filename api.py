@@ -6,16 +6,40 @@ import uvicorn
 import argparse
 import os
 from reranker import get_reranker, rank_documents, unload_reranker
+import torch
+from __version__ import __version__
 
-app = FastAPI(title="Document Reranking API")
+# Set CUDA device if specified in environment
+if torch.cuda.is_available():
+    cuda_device = os.environ.get('CUDA_DEVICE')
+    if cuda_device is not None:
+        try:
+            device_id = int(cuda_device)
+            if device_id >= 0 and device_id < torch.cuda.device_count():
+                torch.cuda.set_device(device_id)
+            else:
+                print(f"Warning: Invalid CUDA_DEVICE {device_id}. Using default device.")
+        except ValueError:
+            print(f"Warning: Invalid CUDA_DEVICE value '{cuda_device}'. Using default device.")
+
+app = FastAPI(title="Document Reranking API", version=__version__)
 
 # Add API usage instructions
 API_INSTRUCTIONS: Dict = {
     "description": "Document Reranking API - Ranks documents based on their relevance to a question",
+    "version": __version__,
     "endpoints": {
         "/": {
             "method": "GET",
             "description": "Returns these API usage instructions"
+        },
+        "/healthz": {
+            "method": "GET",
+            "description": "Health check endpoint that returns server status"
+        },
+        "/test": {
+            "method": "GET",
+            "description": "Runs a predefined test reranking example to verify functionality"
         },
         "/rank": {
             "method": "POST",
@@ -49,6 +73,72 @@ API_INSTRUCTIONS: Dict = {
 @app.get("/")
 async def root():
     return JSONResponse(content=API_INSTRUCTIONS)
+
+@app.get("/healthz")
+async def health_check():
+    """Health check endpoint that verifies server and model status"""
+    try:
+        # Check if model is loaded/can be loaded
+        reranker = get_reranker()
+        model_loaded = reranker is not None
+        
+        # Get GPU information
+        gpu_info = {
+            "gpu_available": torch.cuda.is_available(),
+            "gpu_count": torch.cuda.device_count() if torch.cuda.is_available() else 0,
+            "current_device": torch.cuda.get_device_name() if torch.cuda.is_available() else None,
+            "current_device_id": torch.cuda.current_device() if torch.cuda.is_available() else None,
+            "selected_device": os.environ.get('CUDA_DEVICE', 'default'),
+            "memory_allocated": f"{torch.cuda.memory_allocated() / 1024**2:.2f}MB" if torch.cuda.is_available() else None
+        }
+        
+        return {
+            "status": "healthy",
+            "model_status": {
+                "loaded": model_loaded,
+                "type": "BAAI/bge-reranker-v2-gemma"
+            },
+            "gpu_info": gpu_info
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Health check failed: {str(e)}"
+        )
+
+@app.get("/test")
+async def test_reranking():
+    """Test endpoint that runs a predefined reranking example"""
+    try:
+        test_question = "What is a panda?"
+        test_documents = [
+            "The giant panda is a bear native to China.",
+            "Python is a programming language.",
+            "Pandas eat bamboo as their main food source."
+        ]
+        
+        ranked_docs, execution_time = rank_documents(
+            question=test_question,
+            documents=test_documents,
+            top_k=3
+        )
+        
+        return {
+            "status": "success",
+            "test_results": {
+                "question": test_question,
+                "ranked_documents": [
+                    {"document": doc.document, "score": doc.score}
+                    for doc in ranked_docs
+                ],
+                "execution_time": execution_time
+            }
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Test reranking failed: {str(e)}"
+        )
 
 class RankingRequest(BaseModel):
     question: str

@@ -20,6 +20,65 @@ def test_root_endpoint():
     assert response.status_code == 200
     assert response.json() == API_INSTRUCTIONS
 
+def test_healthz_endpoint():
+    """Test the health check endpoint"""
+    response = client.get("/healthz")
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert "model_status" in data
+    assert "gpu_info" in data
+    
+    # Check model status structure
+    model_status = data["model_status"]
+    assert "loaded" in model_status
+    assert "type" in model_status
+    assert model_status["type"] == "BAAI/bge-reranker-v2-gemma"
+    
+    # Check GPU info structure
+    gpu_info = data["gpu_info"]
+    assert "gpu_available" in gpu_info
+    assert "gpu_count" in gpu_info
+    assert "current_device" in gpu_info
+    assert "current_device_id" in gpu_info
+    assert "selected_device" in gpu_info
+    assert "memory_allocated" in gpu_info
+
+def test_test_endpoint():
+    """Test the test endpoint with predefined example"""
+    response = client.get("/test")
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert data["status"] == "success"
+    assert "test_results" in data
+    
+    results = data["test_results"]
+    assert results["question"] == "What is a panda?"
+    assert "ranked_documents" in results
+    assert "execution_time" in results
+    
+    # Check ranked documents
+    ranked_docs = results["ranked_documents"]
+    assert len(ranked_docs) == 3  # Should return all test documents
+    assert all("document" in doc and "score" in doc for doc in ranked_docs)
+    
+    # Verify scores are in descending order
+    scores = [doc["score"] for doc in ranked_docs]
+    assert scores == sorted(scores, reverse=True)
+    
+    # Verify panda-related documents rank higher than Python
+    python_doc = next(
+        doc for doc in ranked_docs 
+        if "Python is a programming language" in doc["document"]
+    )
+    panda_docs = [
+        doc for doc in ranked_docs 
+        if "panda" in doc["document"].lower()
+    ]
+    assert all(doc["score"] > python_doc["score"] for doc in panda_docs)
+
 def test_rank_endpoint_success():
     """Test successful document ranking"""
     request_data = {
