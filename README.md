@@ -2,17 +2,38 @@
 
 This is a simple API for reranking documents based on their relevance to a question.
 
-## Version
+## Setup
 
-The current version is managed in `__version__.py` using semantic versioning (MAJOR.MINOR.PATCH):
-- MAJOR version for incompatible API changes
-- MINOR version for added functionality in a backward compatible manner
-- PATCH version for backward compatible bug fixes
+You can run locally using either Conda or Pip. Alternatively, you can use Docker.
 
-The version is exposed in:
-- API documentation at `/docs`
-- Root endpoint `/` in the response
-- FastAPI title
+## Requirements
+
+An NVIDIA GPU with CUDA drivers installed is suggested. CUDA Toolkit and Nvidia GDS are required to use the GPU.
+
+### Conda
+
+```bash
+conda env create -f environment.yml
+```
+
+Or, if you need to update the environment:
+
+```bash
+conda env update -f environment.yml
+```
+
+### Pip
+
+```bash
+pip install -r requirements.txt
+```
+
+### Docker
+
+```bash
+docker build -t document-reranking-api .
+docker run -p 8000:8000 document-reranking-api
+```
 
 ## Usage
 
@@ -73,14 +94,14 @@ There is a `/test` endpoint that will test the API with a sample question and do
 
 ## GPU Selection
 
-If you have multiple GPUs, you can select which GPU to use by setting the `CUDA_DEVICE` environment variable:
+If you have multiple GPUs, you can select which GPU to use by setting the `CUDA_VISIBLE_DEVICES` environment variable:
 
 ```bash
-# Use GPU 0 (default)
-CUDA_DEVICE=0 uvicorn api:app --reload --host 0.0.0.0 --port 8000
+# Use GPU 0
+CUDA_VISIBLE_DEVICES=0 uvicorn api:app --reload --host 0.0.0.0 --port 8000
 
 # Use GPU 1
-CUDA_DEVICE=1 uvicorn api:app --reload --host 0.0.0.0 --port 8000
+CUDA_VISIBLE_DEVICES=1 uvicorn api:app --reload --host 0.0.0.0 --port 8000
 ```
 
 You can verify the GPU being used by checking the `/healthz` endpoint, which will show:
@@ -88,3 +109,46 @@ You can verify the GPU being used by checking the `/healthz` endpoint, which wil
 - Total number of GPUs
 - Currently selected GPU device
 - GPU memory usage
+
+## Environment Variables
+
+The reranker component can be configured using the following environment variables:
+
+### RERANKER_MODEL
+- **Description**: Specifies which model to use for reranking
+- **Default**: `BAAI/bge-reranker-v2-gemma`
+- **Example**: 
+  ```bash
+  export RERANKER_MODEL="BAAI/bge-reranker-large-v1.5"
+  ```
+
+### RERANKER_DEBUG
+- **Description**: Enables detailed CUDA diagnostics logging when set to 'true'
+- **Default**: Not enabled
+- **Example**:
+  ```bash
+  export RERANKER_DEBUG=true
+  ```
+  When enabled, logs will include:
+  - PyTorch version
+  - CUDA availability
+  - CUDA version
+  - Number of CUDA devices
+  - Current CUDA device
+  - CUDA device name
+
+### CUDA_DEVICE
+- **Description**: Specifies which GPU device to use for the reranker
+- **Default**: Uses first available GPU (cuda:0)
+- **Example**:
+  ```bash
+  export CUDA_DEVICE=1  # Use second GPU
+  ```
+
+  ### CUDA_VISIBLE_DEVICES
+- **Description**: Specifies which GPUs to make available to the reranker
+- **Default**: All available GPUs
+- **Example**:
+  ```bash
+  export CUDA_VISIBLE_DEVICES=0,1  # Use GPUs 0 and 1
+  ```

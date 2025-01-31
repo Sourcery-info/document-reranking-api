@@ -8,6 +8,8 @@ import os
 from reranker import get_reranker, rank_documents, unload_reranker
 import torch
 from __version__ import __version__
+import logging
+import sys
 
 # Set CUDA device if specified in environment
 if torch.cuda.is_available():
@@ -196,7 +198,24 @@ def get_args():
                       help='Port to run the server on (default: 8000)')
     return parser.parse_args()
 
+# Add after imports
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
+
+# Update the startup code at bottom of file
 if __name__ == "__main__":
     args = get_args()
-    print(f"Starting server on {args.host}:{args.port}")
-    uvicorn.run(app, host=args.host, port=args.port) 
+    try:
+        logging.info(f"Starting server on {args.host}:{args.port}")
+        logging.info(f"CUDA available: {torch.cuda.is_available()}")
+        if torch.cuda.is_available():
+            logging.info(f"CUDA devices: {torch.cuda.device_count()}")
+            logging.info(f"Current CUDA device: {torch.cuda.current_device()}")
+            logging.info(f"Device name: {torch.cuda.get_device_name()}")
+        uvicorn.run(app, host=args.host, port=args.port)
+    except Exception as e:
+        logging.error(f"Server failed to start: {str(e)}", exc_info=True)
+        sys.exit(1) 
