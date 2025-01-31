@@ -35,6 +35,17 @@ docker build -t document-reranking-api .
 docker run -p 8000:8000 document-reranking-api
 ```
 
+## Setup
+
+### Conda
+
+You can install the dependencies using conda:
+
+```bash
+conda env create -f environment.yml
+conda activate document-reranking-api
+```
+
 ## Usage
 
 To run the API, use the following command:
